@@ -7,7 +7,7 @@
     - awscredentials.vars
   vars:
     region: "ap-south-1"
-    project: "instgram"
+    project: "facebook"
     webserver_ports:
       - 80
       - 443
@@ -135,6 +135,29 @@
           healthy_threshold: 2
       with_items:
         - "{{ ec2.instances }}"
+      register: elb
+
+    - name: "Fecting the elb informations"
+      community.aws.elb_classic_lb_info:
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        region: "{{ region }}"
+        names: "ansible-classic-loadbalncer"
+      register: elb_info
+
+
+    - name: "Add an alias record that points to an Amazon ELB"  
+      when: elb.changed
+      community.aws.route53:
+        aws_access_key: "{{ access_key }}"
+        aws_secret_key: "{{ secret_key }}"
+        state: present
+        zone:  vyjithks.tk
+        record: elb.vyjithks.tk
+        type: A
+        value: "{{ elb_info.elbs.0.dns_name }}"
+        alias: True
+        alias_hosted_zone_id: "{{ elb_info.elbs.0.canonical_hosted_zone_name_id }}"
         
     - name: "Amazon - Creating Dynamic Inventory"
       add_host:
@@ -205,5 +228,6 @@
       when: gitstatus.changed
       wait_for:
         timeout: 20
+
 ```
 
